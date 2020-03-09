@@ -11,7 +11,7 @@ exports.handler =   (event,callback, context) => {
             {
                 Id: "s3-event-configuration",
                 Events: [ "s3:ObjectCreated:*" ],
-                QueueArn: "arn:aws:sqs:us-east-2:404814018302:audible-groot-upload-AudGrootDownloadQueue-F2E2YA7APD9U",
+                QueueArn: "arn:aws:sqs:us-east-2:XXXXXXXXXXX:audible-groot-upload-AudGrootDownloadQueue-F2E2YA7APD9U",
                 Filter: {
                     Key: {
                         FilterRules: [
