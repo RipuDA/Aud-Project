@@ -1,0 +1,22 @@
+version: 0.2
+env:
+  variables:
+    # This S3 bucket will be used to store the packaged Lambda deployment bundle.
+    # Make sure to provide a valid S3 bucket name (it must exist already).
+    # The AWS CodeBuild IAM role must allow write access to it.
+    S3_BUCKET: "aud-groot-use2-coderepo-dev"
+    TEMPLATE_FILE: cf-file-archive-dev.yaml
+phases:
+  install:
+    runtime-versions:
+        nodejs: 10
+  build:
+    commands:
+      - npm install aws-sdk
+      - npm install lambda-s3-archiver
+      - aws cloudformation package --template-file ${TEMPLATE_FILE} --s3-bucket ${S3_BUCKET} --output-template-file outputtemplate.yaml
+artifacts:
+  type: zip
+  files:
+   - ${TEMPLATE_FILE}
+   - outputtemplate.yaml

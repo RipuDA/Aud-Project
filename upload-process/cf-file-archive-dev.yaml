@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: An AWS Serverless Specification template describing your function.
+Resources:
+  
+  AudGrootDownloadQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 90
+      RedrivePolicy:
+        deadLetterTargetArn: !Sub ${AudGrootDeadLetterQueue.Arn}
+        maxReceiveCount: 10
+  AudGrootDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 864000
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 500
+  ConsumerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action:
+            - sts:AssumeRole
+      Path: '/'
+      Policies:
+      - PolicyName: logs
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+      - PolicyName: sqs
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:GetQueueAttributes
+            - sqs:ChangeMessageVisibility
+            Resource: !Sub ${AudGrootDownloadQueue.Arn}
+      - PolicyName: s3
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:*
+            Resource: ['arn:aws:s3:::aud-groot-use2-download-dev','arn:aws:s3:::aud-groot-use2-upload-dev']
+  audGrootArchiveUpldFiles:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs12.x
+      FunctionName: audGrootArchiveUpldFiles
+      Description: ''
+      MemorySize: 1536
+      Role: arn:aws:iam::404814018302:role/AudGrootLambdaExecutionRole
+      Timeout: 15
+      Environment:
+        Variables:
+          TARGET_BUCKET_NAME: aud-groot-use2-download-dev
+          REGION: us-east-1
+          FILE_EXTN: '.zip'
+  LambdaFunctionEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 10
+      Enabled: true
+      EventSourceArn: !GetAtt AudGrootDownloadQueue.Arn
+      FunctionName: !GetAtt audGrootArchiveUpldFiles.Arn
+
+
+

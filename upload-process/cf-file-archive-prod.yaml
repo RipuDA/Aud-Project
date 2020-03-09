@@ -1,0 +1,18 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: An AWS Serverless Specification template describing your function.
+Resources:
+  audGrootArchiveUpldFiles:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs12.x
+      FunctionName: audGrootArchiveUpldFiles
+      Description: ''
+      MemorySize: 1536
+      Timeout: 15
+      Environment:
+        Variables:
+          TARGET_BUCKET_NAME: aud-groot-use1-download-prod
+          REGION: us-east-1
+          FILE_EXTN: '.zip'

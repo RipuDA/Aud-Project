@@ -1,0 +1,15 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Demo SAML Custom Provider
+
+Resources:
+  SAMLProvider:
+    Type: Custom::SAMLProvider
+    Properties:
+      ServiceToken: !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:cfn-saml-provider'
+      Name: !Sub 'saml-provider-${AWS::StackName}'
+      #URL: 'https://idp-integ.federate.amazon.com/api/saml2/v3/metadata'
+      URL: 'https://ripucg-dev-ed.my.salesforce.com/.well-known/samlidp/Amazon_Web_Service.xml'
+Outputs:
+  SAMLProvider:
+    Description: Arn of the SAML provider
+    Value: !Ref 'SAMLProvider'

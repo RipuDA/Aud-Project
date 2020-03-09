@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: An AWS Serverless Specification template describing your downloadfunction.
+Resources:
+  audGeneratePSURL:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs12.x
+      FunctionName: audGrootDwnldFiles
+      Description: ''
+      MemorySize: 1536
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/AudGrootLambdaExecutionRole
+      Timeout: 15
+      Environment:
+        Variables:
+          BUCKET_NAME: aud-groot-use2-download-dev
+          REGION: !Sub ${AWS::Region}
+          IDENTITY_POOL_ID: 
+            Fn::ImportValue: 
+              Fn::Sub: audible-groot-cognito-setup-IdentityPoolId
+          LOGIN_URL: !Sub arn:aws:iam::${AWS::AccountId}:saml-provider/saml-provider-audible-groot-cognito
+          FILE_EXTENSION: .zip
+          EXPIRY_TIME: 600
+  lambdaApiGatewayInvoke:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt "audGeneratePSURL.Arn"
+      Principal: "apigateway.amazonaws.com"
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AudGrootGateway}/*/*/audGrootDwnldFiles"
+  
+  AudGrootGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: Audible Groot File Download Gateway
+  AudGrootGatewayResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref AudGrootGateway
+      ParentId:
+        Fn::GetAtt:
+        - AudGrootGateway
+        - RootResourceId
+      PathPart: audGrootDwnldFiles
+  AudGrootGatewayMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: POST
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Uri:
+          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:audGrootDwnldFiles/invocations
+        RequestTemplates:
+          application/x-www-form-urlencoded: |
+            {
+              #foreach($kvSet in $input.body.split('&'))
+
+                #set($foo = $kvSet.split('='))
+
+                "$foo[0]":"$util.urlDecode($foo[1])"#if($foreach.hasNext),#end
+
+              #end
+            }
+        IntegrationResponses:
+        - StatusCode: 302
+          ResponseParameters:
+            method.response.header.location: integration.response.body.location
+        PassthroughBehavior: WHEN_NO_TEMPLATES
+      ResourceId: !Ref AudGrootGatewayResource
+      RestApiId: !Ref AudGrootGateway
+      MethodResponses:
+      - StatusCode: 302
+        ResponseModels:
+            application/json: Empty
+        ResponseParameters:
+          method.response.header.location: true
+      RequestModels:
+        application/json: Empty
+  AudGrootGatewayProdStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      DeploymentId: !Ref AudGrootGatewayDeployment
+      RestApiId: !Ref AudGrootGateway
+      StageName: Prod
+  AudGrootGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: AudGrootGatewayMethod
+    Properties:
+      RestApiId: !Ref AudGrootGateway
+      Description: AudGrootGateway deployment
+      StageName: Stage        
